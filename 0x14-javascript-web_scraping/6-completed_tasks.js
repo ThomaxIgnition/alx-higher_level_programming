@@ -1,16 +1,57 @@
-#!/usr/bin/node
+#!/usr/bin/env node
+
 const request = require('request');
-request(process.argv[2], function (error, response, body) {
-  if (!error) {
-    const todos = JSON.parse(body);
-    const completed = {};
-    todos.forEach((todo) => {
-      if (todo.completed && completed[todo.userId] === undefined) {
-        completed[todo.userId] = 1;
-      } else if (todo.completed) {
-        completed[todo.userId] += 1;
+
+// Function to fetch the tasks from the API URL
+function fetchTasks(apiURL) {
+  return new Promise((resolve, reject) => {
+    request(apiURL, { json: true }, (error, response, body) => {
+      if (error) {
+        reject(error);
+      } else if (response.statusCode !== 200) {
+        reject(`Failed to fetch data. Status code: ${response.statusCode}`);
+      } else {
+        resolve(body);
       }
     });
-    console.log(completed);
+  });
+}
+
+// Function to compute the number of completed tasks per user ID
+function computeCompletedTasks(tasks) {
+  const completedTasksCount = {};
+
+  tasks.forEach((task) => {
+    if (task.completed) {
+      if (completedTasksCount[task.userId]) {
+        completedTasksCount[task.userId]++;
+      } else {
+        completedTasksCount[task.userId] = 1;
+      }
+    }
+  });
+
+  return completedTasksCount;
+}
+
+// Main function
+async function main() {
+  try {
+    const apiURL = process.argv[2];
+
+    if (!apiURL) {
+      console.error('Error: API URL not provided.');
+      return;
+    }
+
+    const tasks = await fetchTasks(apiURL);
+    const completedTasksCount = computeCompletedTasks(tasks);
+
+    console.log(completedTasksCount);
+  } catch (error) {
+    console.error('Error:', error);
   }
-});
+}
+
+// Call the main function
+main();
